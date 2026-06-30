@@ -15,4 +15,9 @@ Transportation Specialist | DevOps Engineer at Amazon<br><br>Linux | AWS | Shell
 ---
 [![](https://komarev.com/ghpvc/?username=SeelamRakesh&icon=0&color=0)](https://visitcount.itsvg.in)
 
+# 👾 My GitHub Arcade
+
+![Pacman Game](https://raw.githubusercontent.com/SeelamRakesh/SeelamRakesh/output/pacman.svg)
+
+
 <!-- Proudly created with GPRM ( https://gprm.itsvg.in ) -->
