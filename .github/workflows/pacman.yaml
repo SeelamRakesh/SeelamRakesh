@@ -1,31 +1,28 @@
 name: Generate Pacman Game
 
 on:
-  # Run automatically once a day
   schedule:
     - cron: "0 0 * * *"
-  
-  # Allows manual triggering from the Actions tab
   workflow_dispatch:
 
 jobs:
   generate:
+    # Explicitly grant write access to repository contents
+    permissions: 
+      contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
     steps:
+      # FIX: Target @main instead of @v1.0.0
       - name: Generate Pacman SVG
-        uses: abozanona/pacman-contribution-graph@v1.0.0
+        uses: abozanona/pacman-contribution-graph@main
         with:
           github_user_name: ${{ github.repository_owner }}
-          # Available games: pacman, breakout
-          game: pacman 
+          games: 'pacman' 
 
-      - name: Push Pacman SVG to GitHub Pages/Output Branch
+      - name: Push Pacman SVG
         uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
           target_branch: output
           build_dir: dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
