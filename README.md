@@ -1,4 +1,4 @@
-# 💫 Hi, I am Rakesh
+# 👋 Hi, I am Rakesh
 
 ### Transportation Specialist | DevOps Engineer at Amazon
 🚀 DevOps • SRE • | Linux | AWS | Shell | Ansible | Git | Terraform | Docker | Kubernetes | Jenkins 
