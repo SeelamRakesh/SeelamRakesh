@@ -31,7 +31,7 @@ Passionate DevOps & AWS Cloud Engineer with 2+ years of experience in infrastruc
 
 ---
 
-# 👾 My GitHub Arcade
+# 👾 GitHub Contribution PacMan
 
 <p align="center">
 <picture>
