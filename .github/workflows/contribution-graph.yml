@@ -1,0 +1,44 @@
+name: Update Contribution Graph
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "17 0 * * *"
+
+  push:
+    paths:
+      - "scripts/generate_contribution_graph.py"
+      - ".github/workflows/contribution-graph.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate contribution graph
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/generate_contribution_graph.py
+
+      - name: Commit updated graph
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add contribution-graph.svg
+
+          if git diff --cached --quiet; then
+            echo "No changes to contribution graph."
+            exit 0
+          fi
+
+          git commit -m "Update contribution graph"
+          git push
