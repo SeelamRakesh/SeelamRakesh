@@ -42,10 +42,3 @@ Passionate DevOps & AWS Cloud Engineer with 2+ years of experience in infrastruc
   <img alt="pacman contribution graph"
     src="https://raw.githubusercontent.com/SeelamRakesh/SeelamRakesh/output/pacman-contribution-graph.svg">
 </picture>
-
-<!-- ![Pacman Game](https://raw.githubusercontent.com/SeelamRakesh/SeelamRakesh/output/pacman.svg)
-![Pacman Game](https://githubusercontent.com) -->
-
-
-
-<!-- Proudly created with GPRM ( https://gprm.itsvg.in ) -->
