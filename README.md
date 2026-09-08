@@ -25,9 +25,15 @@ Passionate DevOps & AWS Cloud Engineer with 2+ years of experience in infrastruc
 
 # 📈 Contribution Graph
 
-<p align="center">
-<img src="https://github-readme-activity-graph.vercel.app/graph?username=SeelamRakesh&theme=tokyo-night&hide_border=true"/>
-</p>
+<div align="center">
+
+<img
+  src="./contribution-graph.svg"
+  alt="SeelamRakesh contribution graph"
+  width="900"
+/>
+
+</div>
 
 ---
 
