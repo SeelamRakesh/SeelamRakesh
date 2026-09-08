@@ -72,7 +72,20 @@ def generate_svg(calendar):
 
     # GitHub normally returns 5 contribution colors.
     # Use them directly so the graph follows GitHub's contribution levels.
-    level_colors = colors
+    # GitHub contribution colors
+    level_colors = list(colors)
+
+    # Ensure we always have 5 colors for contribution levels 0-4.
+    default_colors = [
+        "#0d1117",
+        "#9be9a8",
+        "#40c463",
+        "#30a14e",
+        "#216e39",
+    ]
+
+    while len(level_colors) < 5:
+        level_colors.append(default_colors[len(level_colors)])
 
     cell = 12
     gap = 3
