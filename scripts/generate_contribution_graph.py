@@ -2,7 +2,8 @@ import json
 import os
 import urllib.request
 import html
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 USERNAME = "SeelamRakesh"
 OUTPUT = "contribution-graph.svg"
@@ -13,12 +14,10 @@ query($login: String!) {
     contributionsCollection {
       contributionCalendar {
         totalContributions
-        colors
         weeks {
           contributionDays {
             contributionCount
             date
-            weekday
           }
         }
       }
@@ -60,142 +59,317 @@ def escape(value):
 
 
 def generate_svg(calendar):
-    weeks = calendar["weeks"]
-    colors = calendar["colors"]
+
     total = calendar["totalContributions"]
 
-    # Tokyo-night inspired colors.
-    background = "#0d1117"
-    text = "#c9d1d9"
-    muted = "#8b949e"
-    border = "#30363d"
+    # ---------------------------------------------------------
+    # Collect all daily contribution data
+    # ---------------------------------------------------------
 
-    # GitHub normally returns 5 contribution colors.
-    # Use them directly so the graph follows GitHub's contribution levels.
-    # GitHub contribution colors
-    level_colors = list(colors)
+    daily_data = []
 
-    # Ensure we always have 5 colors for contribution levels 0-4.
-    default_colors = [
-        "#0d1117",
-        "#9be9a8",
-        "#40c463",
-        "#30a14e",
-        "#216e39",
+    for week in calendar["weeks"]:
+        for day in week["contributionDays"]:
+            daily_data.append({
+                "date": datetime.strptime(day["date"], "%Y-%m-%d").date(),
+                "count": day["contributionCount"]
+            })
+
+    # Sort by date
+    daily_data.sort(key=lambda x: x["date"])
+
+    if not daily_data:
+        raise RuntimeError("No contribution data found.")
+
+    # ---------------------------------------------------------
+    # Keep approximately the latest 12 months
+    # ---------------------------------------------------------
+
+    latest_date = daily_data[-1]["date"]
+    start_date = latest_date - timedelta(days=365)
+
+    daily_data = [
+        item for item in daily_data
+        if item["date"] >= start_date
     ]
 
-    while len(level_colors) < 5:
-        level_colors.append(default_colors[len(level_colors)])
+    # ---------------------------------------------------------
+    # Aggregate contributions by month
+    # ---------------------------------------------------------
 
-    cell = 12
-    gap = 3
-    step = cell + gap
+    monthly = defaultdict(int)
 
-    left = 42
-    top = 48
+    for item in daily_data:
+        month_key = item["date"].strftime("%Y-%m")
+        monthly[month_key] += item["count"]
 
-    graph_width = len(weeks) * step
-    graph_height = 7 * step
+    months = sorted(monthly.keys())
 
-    width = left + graph_width + 20
-    height = top + graph_height + 35
+    # Keep latest 12 months
+    months = months[-12:]
+
+    values = [monthly[month] for month in months]
+
+    # ---------------------------------------------------------
+    # Graph styling
+    # ---------------------------------------------------------
+
+    background = "#0d1117"
+    panel = "#161b22"
+    text = "#f0f6fc"
+    muted = "#8b949e"
+    grid = "#30363d"
+    line = "#58a6ff"
+    area = "#1f6feb"
+
+    # ---------------------------------------------------------
+    # SVG dimensions
+    # ---------------------------------------------------------
+
+    width = 900
+    height = 430
+
+    left = 70
+    right = 30
+    top = 70
+    bottom = 70
+
+    graph_width = width - left - right
+    graph_height = height - top - bottom
+
+    max_value = max(values) if values else 1
+
+    # Give the graph some breathing room
+    if max_value == 0:
+        max_value = 1
+
+    # ---------------------------------------------------------
+    # Coordinate helpers
+    # ---------------------------------------------------------
+
+    def x_position(index):
+        if len(months) == 1:
+            return left + graph_width / 2
+
+        return left + (
+            index * graph_width / (len(months) - 1)
+        )
+
+    def y_position(value):
+        return (
+            top
+            + graph_height
+            - (value / max_value) * graph_height
+        )
+
+    # ---------------------------------------------------------
+    # Build SVG
+    # ---------------------------------------------------------
 
     svg = []
 
     svg.append(
         f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{width}" height="{height}" '
-        f'viewBox="0 0 {width} {height}">'
+        f'width="100%" height="{height}" '
+        f'viewBox="0 0 {width} {height}" '
+        f'role="img">'
     )
 
     # Background
     svg.append(
-        f'<rect width="100%" height="100%" rx="10" fill="{background}"/>'
+        f'<rect width="100%" height="100%" '
+        f'rx="12" fill="{background}"/>'
     )
 
-    # Title
+    # Panel
     svg.append(
-        f'<text x="{left}" y="23" '
+        f'<rect x="20" y="20" '
+        f'width="{width - 40}" '
+        f'height="{height - 40}" '
+        f'rx="12" '
+        f'fill="{panel}" '
+        f'stroke="{grid}" '
+        f'stroke-width="1"/>'
+    )
+
+    # ---------------------------------------------------------
+    # Title
+    # ---------------------------------------------------------
+
+    svg.append(
+        f'<text x="{left}" y="45" '
         f'font-family="Arial, Helvetica, sans-serif" '
-        f'font-size="14" font-weight="600" fill="{text}">'
-        f'{escape(total)} contributions in the last year'
+        f'font-size="20" '
+        f'font-weight="600" '
+        f'fill="{text}">'
+        f'Contribution Graph'
         f'</text>'
     )
 
-    # Weekday labels
-    weekday_labels = {
-        1: "Mon",
-        3: "Wed",
-        5: "Fri",
-    }
+    svg.append(
+        f'<text x="{width - right}" y="45" '
+        f'text-anchor="end" '
+        f'font-family="Arial, Helvetica, sans-serif" '
+        f'font-size="14" '
+        f'fill="{muted}">'
+        f'{escape(total)} contributions'
+        f'</text>'
+    )
 
-    for weekday, label in weekday_labels.items():
-        y = top + weekday * step + 10
+    # ---------------------------------------------------------
+    # Y-axis grid lines
+    # ---------------------------------------------------------
+
+    grid_steps = 4
+
+    for i in range(grid_steps + 1):
+
+        value = round(max_value * i / grid_steps)
+        y = y_position(value)
 
         svg.append(
-            f'<text x="0" y="{y}" '
+            f'<line x1="{left}" y1="{y}" '
+            f'x2="{width - right}" y2="{y}" '
+            f'stroke="{grid}" '
+            f'stroke-width="1" '
+            f'opacity="0.65"/>'
+        )
+
+        svg.append(
+            f'<text x="{left - 12}" y="{y + 4}" '
+            f'text-anchor="end" '
             f'font-family="Arial, Helvetica, sans-serif" '
-            f'font-size="9" fill="{muted}">'
-            f'{label}'
+            f'font-size="11" '
+            f'fill="{muted}">'
+            f'{value}'
             f'</text>'
         )
 
-    # Contribution cells
-    for week_index, week in enumerate(weeks):
-        for day in week["contributionDays"]:
-            weekday = day["weekday"]
-            count = day["contributionCount"]
-
-            x = left + week_index * step
-            y = top + weekday * step
-
-            if count == 0:
-                color = level_colors[0]
-            elif count <= 3:
-                color = level_colors[1]
-            elif count <= 6:
-                color = level_colors[2]
-            elif count <= 9:
-                color = level_colors[3]
-            else:
-                color = level_colors[4]
-
-            svg.append(
-                f'<rect x="{x}" y="{y}" '
-                f'width="{cell}" height="{cell}" rx="2" '
-                f'fill="{escape(color)}">'
-            )
-
-            svg.append(
-                f'<title>{escape(day["date"])}: '
-                f'{escape(count)} contributions</title>'
-            )
-
-            svg.append('</rect>')
-
-    # Legend
-    legend_y = top + graph_height + 22
+    # ---------------------------------------------------------
+    # X-axis
+    # ---------------------------------------------------------
 
     svg.append(
-        f'<text x="{left}" y="{legend_y}" '
-        f'font-family="Arial, Helvetica, sans-serif" '
-        f'font-size="9" fill="{muted}">Less</text>'
+        f'<line x1="{left}" y1="{top + graph_height}" '
+        f'x2="{width - right}" y2="{top + graph_height}" '
+        f'stroke="{grid}" '
+        f'stroke-width="1"/>'
     )
 
-    for i, color in enumerate(level_colors):
-        x = left + 30 + i * 16
+    # ---------------------------------------------------------
+    # Generate graph points
+    # ---------------------------------------------------------
 
-        svg.append(
-            f'<rect x="{x}" y="{legend_y - 9}" '
-            f'width="11" height="11" rx="2" '
-            f'fill="{escape(color)}"/>'
-        )
+    points = []
+
+    for index, value in enumerate(values):
+
+        x = x_position(index)
+        y = y_position(value)
+
+        points.append((x, y))
+
+    # ---------------------------------------------------------
+    # Area under graph
+    # ---------------------------------------------------------
+
+    area_points = [
+        f"{points[0][0]},{top + graph_height}"
+    ]
+
+    for x, y in points:
+        area_points.append(f"{x},{y}")
+
+    area_points.append(
+        f"{points[-1][0]},{top + graph_height}"
+    )
 
     svg.append(
-        f'<text x="{left + 30 + len(level_colors) * 16 + 3}" '
-        f'y="{legend_y}" '
+        f'<polygon points="{" ".join(area_points)}" '
+        f'fill="{area}" '
+        f'opacity="0.18"/>'
+    )
+
+    # ---------------------------------------------------------
+    # Main graph line
+    # ---------------------------------------------------------
+
+    line_points = " ".join(
+        f"{x},{y}" for x, y in points
+    )
+
+    svg.append(
+        f'<polyline points="{line_points}" '
+        f'fill="none" '
+        f'stroke="{line}" '
+        f'stroke-width="3" '
+        f'stroke-linecap="round" '
+        f'stroke-linejoin="round"/>'
+    )
+
+    # ---------------------------------------------------------
+    # Data points + labels
+    # ---------------------------------------------------------
+
+    for index, ((x, y), value, month) in enumerate(
+        zip(points, values, months)
+    ):
+
+        # Month label
+        month_label = datetime.strptime(
+            month, "%Y-%m"
+        ).strftime("%b")
+
+        svg.append(
+            f'<text x="{x}" '
+            f'y="{height - 38}" '
+            f'text-anchor="middle" '
+            f'font-family="Arial, Helvetica, sans-serif" '
+            f'font-size="11" '
+            f'fill="{muted}">'
+            f'{month_label}'
+            f'</text>'
+        )
+
+        # Data point
+        svg.append(
+            f'<circle cx="{x}" cy="{y}" '
+            f'r="5" '
+            f'fill="{background}" '
+            f'stroke="{line}" '
+            f'stroke-width="3">'
+        )
+
+        # Tooltip
+        svg.append(
+            f'<title>'
+            f'{escape(month_label)}: '
+            f'{escape(value)} contributions'
+            f'</title>'
+        )
+
+        svg.append('</circle>')
+
+    # ---------------------------------------------------------
+    # Axis labels
+    # ---------------------------------------------------------
+
+    svg.append(
+        f'<text x="{left}" y="{height - 12}" '
         f'font-family="Arial, Helvetica, sans-serif" '
-        f'font-size="9" fill="{muted}">More</text>'
+        f'font-size="10" '
+        f'fill="{muted}">'
+        f'Month'
+        f'</text>'
+    )
+
+    svg.append(
+        f'<text x="18" y="{top}" '
+        f'font-family="Arial, Helvetica, sans-serif" '
+        f'font-size="10" '
+        f'fill="{muted}">'
+        f'Contributions'
+        f'</text>'
     )
 
     svg.append("</svg>")
@@ -204,7 +378,9 @@ def generate_svg(calendar):
 
 
 def main():
+
     print("Fetching GitHub contribution data...")
+
     calendar = github_graphql()
 
     print(
